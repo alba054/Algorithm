@@ -75,6 +75,8 @@ class Maze {
         this.mazePerLn = strMaze.split('\n');
         this.encodedMaze = new Array(this.mazePerLn.length);
         this.maze = new Array(this.encodedMaze.length);
+        this.start = {row:null, col:null};
+        this.goal = {row:null, col:null};
 
         // encode maze from string to array
         this.encodeMaze();
@@ -114,9 +116,13 @@ class Maze {
             for(let j = 0; j < this.maze[0].length; j++) {
                 if(this.encodedMaze[i][j] === 'A') {
                     this.maze[i][j].style.backgroundColor = "red";
+                    this.start.row = i;
+                    this.start.col = j;
                 }
                 else if(this.encodedMaze[i][j] === 'B') {
                     this.maze[i][j].style.backgroundColor = "green";
+                    this.goal.row = i;
+                    this.goal.col = j;
                 }
                 else if(this.encodedMaze[i][j] === '#') {
                     this.maze[i][j].style.backgroundColor = "black";
@@ -179,76 +185,18 @@ class Maze {
         return contained;
     }
 
-    solve(start, goal, algo) {
-        // keep track of number of grids visited
-        this.numVisited = 0;
-
-        // initialize frontier (either stack or queue) with starting pos
-        const startNode = new Node(start, null, null);
-        const frontier = (algo === "bfs") ? new Queue():new Stack();
-        frontier.add(startNode);
-
-        // initialize empty set for tracking visited grid
-        this.visited = new Set();
-
-        while(true) {
-            // console.log(frontier.size);
-            if(frontier.isEmpty()) {
-                return "no solution";
+    solveIDS(start, goal, algo, maxDepth) {
+        for(let i = 0; i <= maxDepth; i++) {
+            const solution = this.solve(start, goal, algo, i);
+            if(solution != "no solution") {
+                return [solution, i];
             }
-            // choose any possible moves from one grid
-            let node = frontier.remove();
-            // console.log(frontier.getSize());
-            // console.log(node.pos);
-            // console.log(node.pos.row);
-            this.numVisited++;
-            // console.log(node.pos);
-            // if grid is the goal
-            if(node.pos.row == goal.row && node.pos.col == goal.col) {
-                const actions = new Array();
-                const grids = new Array();
-                
-                while(node.par != null) {
-                    actions.push(node.action);
-                    grids.push(node.pos);
-                    node = node.par;
-                }
-
-                actions.reverse();
-                grids.reverse();
-                return {actions:actions, grids:grids};
-            }
-
-            // mark grid as visited
-            this.visited.add(node.pos);
-            if(node.pos.row != start.row && node.pos.col != start.col) {
-                this.maze[node.pos.row][node.pos.col].style.backgroundColor = "pink";
-            }
-            // add any possible moves from one grid to frontier
-            const neighbors = this.neighbors(node.pos);
-            // console.log(neighbors)
-            for(let i = 0; i < neighbors.length; i++) {
-                const pos = neighbors[i].pos;
-                const action = neighbors[i].action;
-                // console.log(pos);
-                // console.log(action);
-                if(!frontier.containState(pos) && !this.setContains(this.visited, pos)) {
-                    // console.log("hai");
-                    // const parentNode = node;
-                    const newNode = new Node(pos, node, action);
-                    // console.log(newNode.par);
-                    frontier.add(newNode);
-                    // console.log(frontier.getSize());
-                    // frontier.els;
-                }
-                // console.log(frontier.getSize());
-            }
-            // console.log(frontier.getSize());
-
         }
-    }
 
-    solveDLS(start, goal, algo, limit) {
+        return "no solution"
+;    }
+    
+    solve(start, goal, algo, limit) {
         // limit variable
         const maxDepth = limit != -1 ? limit:-1;
 
@@ -316,13 +264,20 @@ class Maze {
 
     drawSolution(algo, limit) {
         this.colorGrid();
-        const start = {row:15, col:0};
-        const goal = {row:8, col:13};
-        const solution = this.solveDLS(start, goal, algo, limit).grids;
+        const start = this.start;
+        const goal = this.goal;
+        let solution;
+        if(algo == "ids") {
+            solution = this.solveIDS(start, goal, algo, limit)[0].grids;
+            console.log(this.solveIDS(start, goal, algo, limit)[1]);
+        }
+        else {
+            solution = this.solve(start, goal, algo, limit).grids;
+        }
         for(let i = 0; i < solution.length; i++) {
             const row = solution[i].row;
             const col = solution[i].col;
-            // if((row == start.row && col == start.col) || (row == goal.row && goal.col)) continue;
+            if((row == goal.row && col == goal.col)) continue;
             this.maze[solution[i].row][solution[i].col].style.backgroundColor = "yellow";
         }
     }
