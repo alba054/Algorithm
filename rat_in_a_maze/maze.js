@@ -60,6 +60,13 @@ class Node {
     }
 }
 
+class Node2 extends Node{
+    constructor(pos, par, action, depth) {
+        super(pos, par, action);
+        this.depth = depth;
+    }
+}
+
 // create maze in the browser
 class Maze {
     // construct Maze
@@ -136,8 +143,6 @@ class Maze {
     neighbors(pos) {
         const row = pos.row;
         const col = pos.col;
-        // console.log(row);
-        // console.log(col);
         const candidates = {
             up:[row - 1, col],
             down:[row + 1, col],
@@ -152,27 +157,13 @@ class Maze {
 
         const result = [];
         for(const candidate in candidates) {
-            // console.log(candidates[candidate][0]);
             const r = candidates[candidate][0];
             const c = candidates[candidate][1];
-            // console.log("row " + r);
-            // console.log("col " + c);
-            // console.log(this.encodedMaze[r][c]);
-            // try {
-                // if(this.encodedMaze[r][c] !== '#') {
-                //     result.push({action:candidate, pos:[r, c]});
-                // }
-                if((r >= 0 && r < this.encodedMaze.length) && (c >= 0 && c < this.encodedMaze[0].length)) {
-                    // console.log(`r:${r}, c:${c}`)
-                    if(this.encodedMaze[r][c] !== '#') {
-                        // console.log(r + " " +  c)
-                        result.push({action:candidate, pos:{row:r, col:c}});
-                    }
+            if((r >= 0 && r < this.encodedMaze.length) && (c >= 0 && c < this.encodedMaze[0].length)) {
+                if(this.encodedMaze[r][c] !== '#') {
+                    result.push({action:candidate, pos:{row:r, col:c}});
                 }
-            // }?
-            // catch(err) {
-            //     continue;
-            // }
+            }
         }
 
         return result;
@@ -257,17 +248,81 @@ class Maze {
         }
     }
 
-    drawSolution(algo) {
+    solveDLS(start, goal, algo, limit) {
+        // limit variable
+        const maxDepth = limit != -1 ? limit:-1;
+
+        // keep track of number of grids visited
+        this.numVisited = 0;
+
+        // initialize frontier (either stack or queue) with starting pos
+        const startNode = new Node2(start, null, null, maxDepth != -1 ? 0:-1);
+        const frontier = algo == "bfs" ? new Queue():new Stack();
+        frontier.add(startNode);
+
+        // initialize empty set for tracking visited grid
+        this.visited = new Set();
+
+        while(true) {
+            if(frontier.isEmpty()) {
+                return "no solution";
+            }
+
+            // choose any possible moves from one grid
+            let node = frontier.remove();
+            this.numVisited++;
+
+            // if grid is the goal
+            if(node.pos.row == goal.row && node.pos.col == goal.col) {
+                const actions = new Array();
+                const grids = new Array();
+                
+                while(node.par != null) {
+                    actions.push(node.action);
+                    grids.push(node.pos);
+                    node = node.par;
+                }
+
+                actions.reverse();
+                grids.reverse();
+                return {actions:actions, grids:grids};
+            }
+            
+            // mark grid as visited
+            this.visited.add(node.pos);
+            if(node.pos.row !== start.row && node.pos.col !== start.col) {
+                this.maze[node.pos.row][node.pos.col].style.backgroundColor = "pink";
+            }
+            
+            // skip if next node is beyond limit depth
+            if(maxDepth != -1) {
+                if(node.depth + 1 > limit) continue;
+            }
+
+            // add any possible moves from one grid to frontier
+            const neighbors = this.neighbors(node.pos);
+
+            for(let i = 0; i < neighbors.length; i++) {
+                const pos = neighbors[i].pos;
+                const action = neighbors[i].action;
+                if(!frontier.containState(pos) && !this.setContains(this.visited, pos)) {
+                    const newNode = new Node2(pos, node, action, node.depth+1);
+                    frontier.add(newNode);
+                }
+            }
+
+        }
+    }
+
+    drawSolution(algo, limit) {
         this.colorGrid();
         const start = {row:15, col:0};
         const goal = {row:8, col:13};
-        const solution = this.solve(start, goal, algo).grids;
-        // console.log(solution);
+        const solution = this.solveDLS(start, goal, algo, limit).grids;
         for(let i = 0; i < solution.length; i++) {
             const row = solution[i].row;
             const col = solution[i].col;
-            if((row == start.row && col == start.col) || (row == goal.row && goal.col)) continue;
-            // if(solution[i].row == goal.row && solution[i].col == goal.col) break;
+            // if((row == start.row && col == start.col) || (row == goal.row && goal.col)) continue;
             this.maze[solution[i].row][solution[i].col].style.backgroundColor = "yellow";
         }
     }
