@@ -3,7 +3,7 @@
 class Queue {
     constructor() {
         this.els = new Array();
-        this.head = 0;
+        // this.head = 0;
         this.size = 0;
     }
 
@@ -25,9 +25,9 @@ class Queue {
         if(this.isEmpty()){
             return -1;
         }
-        const taken = this.els[this.head];
+        const taken = this.els.shift();
         this.size--;
-        this.head++;
+        // this.head++;
         return taken;
     }
 
@@ -178,7 +178,7 @@ class Maze {
     setContains(visited, pos) {
         let contained = false
         visited.forEach((i) => {
-            if(i.row === pos.row && i.col === pos.col) contained = true;
+            if(i.pos.row === pos.row && i.pos.col === pos.col) contained = true;
             
         })
 
@@ -237,7 +237,8 @@ class Maze {
             }
             
             // mark grid as visited
-            this.visited.add(node.pos);
+            this.visited.add(node);
+            // console.log(node.pos)
             if(node.pos.row !== start.row && node.pos.col !== start.col) {
                 this.maze[node.pos.row][node.pos.col].style.backgroundColor = "pink";
             }
@@ -262,6 +263,115 @@ class Maze {
         }
     }
 
+    solveBDS(start, goal) {
+        // keep track of number of grids visited
+        this.numVisited = 0;
+
+        // create start 
+        const startNode = new Node(start, null, null);
+        // create goal
+        const goalNode = new Node(goal, null, null);
+
+        // create start frontier
+        const startFrontier = new Stack();
+        // create goal frontier
+        const goalFrontier = new Stack();
+
+        // create startNode visited set
+        const startVisited = new Set();
+        // create goalNode visited set
+        const goalVisited = new Set();
+
+        // add startNode to startFrontier
+        startFrontier.add(startNode);
+        // add goalNode to goalFrontier
+        goalFrontier.add(goalNode);
+
+        while(true) {
+            // if either startFrontier or goalFrontier empty
+            // means there is no path from startNode to goalNode
+            if(startFrontier.isEmpty() || goalFrontier.isEmpty()) {
+                return "no solution";
+            }
+            
+            // choose any possible moves from start 
+            let sNode = startFrontier.remove();
+            // choose any possible moves from goal
+            let gNode = goalFrontier.remove();
+
+            // check intersection startVisited and goalVisited
+            const intersection = this.intersection(startVisited, goalVisited);
+            if(intersection.length > 0) {
+                const actions = new Array();
+                const grids = new Array();
+                sNode = intersection[0];
+                this.maze[sNode.pos.row][sNode.pos.col].style.backgroundColor = "purple";
+                while(sNode.par != null) {
+                    actions.push(sNode.action);
+                    grids.push(sNode.pos);
+                    sNode = sNode.par;
+                }
+                gNode = intersection[1];
+                // this.maze[gNode.pos.row][gNode.pos.col].style.backgroundColor = "purple";
+                while(gNode.par != null) {
+                    actions.push(gNode.action);
+                    grids.push(gNode.pos);
+                    gNode = gNode.par;
+                }
+
+                return {actions:actions, grids:grids};
+            }
+
+            // mark grid as visited
+            startVisited.add(sNode);
+            goalVisited.add(gNode);
+            
+            if(sNode.pos.row !== start.row && sNode.pos.col !== start.col) {
+                this.maze[sNode.pos.row][sNode.pos.col].style.backgroundColor = "pink";
+                this.maze[gNode.pos.row][gNode.pos.col].style.backgroundColor = "blue";
+            }
+
+            // possible moves relative to start
+            const sNeighbors = this.neighbors(sNode.pos);
+            // possible moves relative to goal
+            const gNeighbors = this.neighbors(gNode.pos);
+            
+            // check all moves relative to start
+            for(let i = 0; i < sNeighbors.length; i++) {
+                const pos = sNeighbors[i].pos;
+                const action = sNeighbors[i].action;
+                if(!startFrontier.containState(pos) && !this.setContains(startVisited, pos)) {
+                    const newNode = new Node(pos, sNode, action);
+                    startFrontier.add(newNode);
+                }
+            }
+
+            // check all moves relative to goal
+            for(let i = 0; i < gNeighbors.length; i++) {
+                const pos = gNeighbors[i].pos;
+                const action = gNeighbors[i].action;
+                if(!goalFrontier.containState(pos) && !this.setContains(goalVisited, pos)) {
+                    const newNode = new Node(pos, gNode, action);
+                    goalFrontier.add(newNode);
+                }
+            }
+
+        }
+
+    }
+
+    intersection(set0, set1) {
+        for(const i of set0) {
+            for(const j of set1) {
+                if(i.pos.row == j.pos.row && i.pos.col == j.pos.col) {
+                    return [i, j];
+                }
+            }
+        }
+
+        return []
+    }
+
     drawSolution(algo, limit) {
         this.colorGrid();
         const start = this.start;
@@ -269,7 +379,13 @@ class Maze {
         let solution;
         if(algo == "ids") {
             solution = this.solveIDS(start, goal, algo, limit)[0].grids;
+            // the minimum depth to explore
             console.log(this.solveIDS(start, goal, algo, limit)[1]);
+        }
+        else if(algo == "bds") {
+            // console.log(start);
+            solution = this.solveBDS(start, goal).grids;
+            // console.log(solution);
         }
         else {
             solution = this.solve(start, goal, algo, limit).grids;
