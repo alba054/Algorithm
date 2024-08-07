@@ -12,9 +12,9 @@ func EquilateralTriangle(n int) string {
 
 		for j := i - 1; j < n; j++ {
 			if i != 1 {
-				s += " *"
+				s += " 1"
 			} else {
-				s += "* "
+				s += "1 "
 			}
 		}
 		s += "\n"
